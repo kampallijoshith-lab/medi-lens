@@ -10,13 +10,13 @@ import ResultsDashboard from '@/components/medilens/results-dashboard';
 import { Button } from '@/components/ui/button';
 import { LiveAlertsTicker } from '@/components/medilens/live-alerts-ticker';
 import InteractiveBackground from '@/components/medilens/interactive-background';
-import { Separator } from '@/components/ui/separator';
 
 export default function Home() {
   const scanner = useScanner();
+  const isResultsPage = scanner.state === 'results';
 
   const renderContent = () => {
-    if (scanner.error && scanner.state !== 'results') { // Don't show global error if it's an analysis error
+    if (scanner.error && !isResultsPage) { // Don't show global error on results page
         return (
             <div className="text-center text-destructive">
                 <h2 className="text-2xl font-bold mb-4">An Error Occurred</h2>
@@ -32,22 +32,25 @@ export default function Home() {
         return <AnalysisStepper steps={scanner.analysisSteps} />;
       case 'results':
         return (
-            <div className='space-y-6'>
-                {scanner.medicineInfo && <MedicineInfoDisplay 
-                                            info={scanner.medicineInfo}
-                                            showActions={false}
-                                            onRestart={()=>{}} 
-                                            onAnalyzeNext={()=>{}}
-                                            hasNext={false}
-                                        /> }
-                {(scanner.medicineInfo && scanner.forensicResult) && <Separator />}
-                {scanner.forensicResult && <ResultsDashboard results={scanner.forensicResult} onRestart={scanner.restart}/>}
-                {scanner.error && (
-                    <div className="text-center text-destructive pt-4">
-                        <h2 className="text-xl font-bold mb-2">Analysis Error</h2>
-                        <p>{scanner.error}</p>
-                    </div>
-                )}
+            <div className="grid grid-cols-1 lg:grid-cols-2 lg:gap-8 space-y-8 lg:space-y-0 text-left">
+                <div className="space-y-6">
+                    {scanner.medicineInfo && <MedicineInfoDisplay 
+                                                info={scanner.medicineInfo}
+                                                showActions={true}
+                                                onRestart={scanner.restart} 
+                                                onAnalyzeNext={scanner.analyzeNext}
+                                                hasNext={scanner.imageQueue.length > 0}
+                                            /> }
+                </div>
+                <div className="space-y-6">
+                    {scanner.forensicResult && <ResultsDashboard results={scanner.forensicResult} onRestart={scanner.restart}/>}
+                    {scanner.error && (
+                        <div className="text-center text-destructive pt-4">
+                            <h2 className="text-xl font-bold mb-2">Analysis Error</h2>
+                            <p>{scanner.error}</p>
+                        </div>
+                    )}
+                </div>
             </div>
         );
       case 'idle':
@@ -61,8 +64,8 @@ export default function Home() {
       <InteractiveBackground />
       <div className="relative z-10 flex flex-col flex-1">
         <Header />
-        <main className="flex-1 w-full container mx-auto px-4 pt-8 pb-20 flex items-stretch justify-center">
-          <div className="w-full max-w-lg text-center flex flex-col">
+        <main className={`flex-1 w-full container mx-auto px-4 pt-8 pb-20 ${!isResultsPage ? 'flex items-stretch justify-center' : ''}`}>
+          <div className={!isResultsPage ? 'w-full max-w-lg text-center flex flex-col' : 'w-full'}>
               {renderContent()}
           </div>
         </main>
