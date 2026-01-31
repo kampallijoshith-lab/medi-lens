@@ -51,7 +51,7 @@ export async function analyzeDrugData(input: AnalyzeDrugDataInput): Promise<Anal
 const prompt = ai.definePrompt({
   name: 'analyzeDrugImagePrompt',
   input: {schema: AnalyzeDrugDataInputSchema},
-  model: 'googleai/gemini-1.5-flash',
+  model: 'googleai/gemini-2.5-flash',
   prompt: `You are an expert in pharmacology and medicine identification.
 From the provided image of the medicine packaging, identify the active ingredients.
 

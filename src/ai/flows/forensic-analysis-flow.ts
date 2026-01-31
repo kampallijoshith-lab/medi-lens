@@ -60,7 +60,7 @@ JSON Schema:
 }`;
 
   const visionResult = await ai.generate({
-    model: 'googleai/gemini-1.5-flash',
+    model: 'googleai/gemini-2.5-flash',
     prompt: forensicPrompt,
     config: {
       temperature: 0,
@@ -110,7 +110,7 @@ JSON Schema:
 
 
   const searchResult = await ai.generate({
-    model: 'googleai/gemini-1.5-flash',
+    model: 'googleai/gemini-2.5-flash',
     prompt: searchTerm,
     tools: [searchTool],
     config: {
@@ -176,7 +176,7 @@ Return JSON:
 }`;
 
   const validatorResult = await ai.generate({
-    model: 'googleai/gemini-1.5-flash',
+    model: 'googleai/gemini-2.5-flash',
     prompt: validatorSystemPrompt,
     config: {
       temperature: 0,
