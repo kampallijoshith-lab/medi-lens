@@ -58,6 +58,12 @@ export type ForensicAnalysisResult = {
   detailed: DetailedFactor[];
   timestamp: string;
   scanId: string;
+  // From MedicineInfo
+  primaryUses?: string;
+  howItWorks?: string;
+  commonIndications?: string[];
+  safetyDisclaimer?: string;
+  error?: string;
 };
 
 export type ScannerState = 'idle' | 'scanning' | 'analyzing' | 'results' ;

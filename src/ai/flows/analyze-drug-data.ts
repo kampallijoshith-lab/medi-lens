@@ -6,6 +6,9 @@
  * - analyzeDrugData - A function that handles the analysis of drug data from an image.
  * - AnalyzeDrugDataInput - The input type for the analyzeDrugData function.
  * - AnalyzeDrugDataOutput - The return type for the analyzeDrugData function.
+ * 
+ * @deprecated This flow is deprecated and will be removed in a future version.
+ * The functionality has been merged into the `forensic-analysis-flow`.
  */
 
 import {ai} from '@/ai/genkit';
@@ -45,46 +48,9 @@ const AnalyzeDrugDataOutputSchema = z.object({
 export type AnalyzeDrugDataOutput = z.infer<typeof AnalyzeDrugDataOutputSchema>;
 
 export async function analyzeDrugData(input: AnalyzeDrugDataInput): Promise<AnalyzeDrugDataOutput> {
-  return analyzeDrugDataFlow(input);
+  // This flow is deprecated. Return a placeholder.
+  console.warn("`analyzeDrugData` is deprecated and should not be used.");
+  return {
+    error: "This function is deprecated."
+  };
 }
-
-const prompt = ai.definePrompt({
-  name: 'analyzeDrugImagePrompt',
-  input: {schema: AnalyzeDrugDataInputSchema},
-  model: 'googleai/gemini-2.5-flash',
-  prompt: `You are an expert in pharmacology and medicine identification.
-From the provided image of the medicine packaging, identify the active ingredients.
-
-If you can identify the ingredients, provide the following information:
-- Primary Uses: What is this medicine typically prescribed for? (e.g., Fever, Bacterial Infection, Hypertension).
-- How it Works: Briefly explain the mechanism (e.g., 'Reduces pain signals in the brain' or 'Kills specific bacteria').
-- Common Indications: List 3-4 specific conditions it treats (e.g., Headache, Muscle pain, Toothache).
-- Safety Disclaimer: Explicitly state that this information is for educational purposes and the user must consult a doctor before consumption.
-
-If the image is too blurry to identify the active ingredients, set the 'error' field to: 'Identification failed. Please upload a clearer image showing the composition.'. In this case, do not populate the other fields.
-
-Respond ONLY with a valid JSON object that conforms to this schema:
-{
-  "primaryUses": "string",
-  "howItWorks": "string",
-  "commonIndications": ["string"],
-  "safetyDisclaimer": "string",
-  "error": "string"
-}
-
-Image: {{media url=photoDataUri}}
-`,
-});
-
-const analyzeDrugDataFlow = ai.defineFlow(
-  {
-    name: 'analyzeDrugDataFlow',
-    inputSchema: AnalyzeDrugDataInputSchema,
-    outputSchema: AnalyzeDrugDataOutputSchema,
-  },
-  async input => {
-    const response = await prompt(input);
-    const cleanedJson = cleanJSON(response.text);
-    return JSON.parse(cleanedJson);
-  }
-);

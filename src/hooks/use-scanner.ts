@@ -2,13 +2,11 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import type { ScannerState, AnalysisStep, MedicineInfo, ForensicAnalysisResult } from '@/lib/types';
-import { analyzeDrugData } from '@/ai/flows/analyze-drug-data';
 import { forensicAnalysisFlow } from '@/ai/flows/forensic-analysis-flow';
 
 const initialAnalysisSteps: AnalysisStep[] = [
   { title: 'Queueing image for analysis...', status: 'pending', duration: 500 },
-  { title: 'Analyzing packaging for general info...', status: 'pending', duration: 3000 },
-  { title: 'Performing deep forensic analysis...', status: 'pending', duration: 5000 },
+  { title: 'Performing unified AI analysis...', status: 'pending', duration: 8000 },
   { title: 'Finalizing report...', status: 'pending', duration: 1000 },
 ];
 
@@ -56,20 +54,27 @@ export const useScanner = () => {
     try {
       await runStep(0, currentSteps[0].duration);
 
-      // --- First API Call ---
+      // --- Unified API Call ---
       await runStep(1);
-      const infoPromise = analyzeDrugData({ photoDataUri: imageDataUrl });
-
-      // --- Second API Call ---
-      await runStep(2);
-      const forensicPromise = forensicAnalysisFlow({ photoDataUri: imageDataUrl });
+      const unifiedResult = await forensicAnalysisFlow({ photoDataUri: imageDataUrl });
       
-      const [infoResult, forensicData] = await Promise.all([infoPromise, forensicPromise]);
-
-      setMedicineInfo(infoResult.error ? { error: infoResult.error } : infoResult);
-      setForensicResult(forensicData);
+      // The AI might return an error for the whole process
+      if (unifiedResult.error && !unifiedResult.score) {
+          setError(unifiedResult.error);
+          setMedicineInfo({ error: unifiedResult.error });
+      } else {
+          const infoResult: MedicineInfo = {
+            primaryUses: unifiedResult.primaryUses,
+            howItWorks: unifiedResult.howItWorks,
+            commonIndications: unifiedResult.commonIndications,
+            safetyDisclaimer: unifiedResult.safetyDisclaimer,
+            error: unifiedResult.error,
+          };
+          setMedicineInfo(infoResult);
+          setForensicResult(unifiedResult);
+      }
       
-      await runStep(3, currentSteps[3].duration);
+      await runStep(2, currentSteps[2].duration);
 
 
       // Finalize
@@ -106,6 +111,7 @@ export const useScanner = () => {
   }, []);
 
   const startScan = useCallback(() => {
+    if (cooldown > 0) return;
     setState('scanning');
     setImage(null);
     setMedicineInfo(null);
@@ -113,7 +119,7 @@ export const useScanner = () => {
     setError(null);
     setImageQueue([]);
     setAnalysisSteps(initialAnalysisSteps.map(s => ({ ...s, status: 'pending' })));
-  }, []);
+  }, [cooldown]);
 
   const handleImageCapture = useCallback((imageDataUrl: string) => {
     _startAnalysisWithQueue([imageDataUrl]);
