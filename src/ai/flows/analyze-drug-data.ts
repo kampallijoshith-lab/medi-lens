@@ -1,9 +1,9 @@
 'use server';
 
 /**
- * @fileOverview Analyzes medicine data from WHO, FDA, and CDSCO to determine if a searched medicine is potentially falsified or dangerous.
+ * @fileOverview Analyzes medicine data from an image to provide information about it.
  *
- * - analyzeDrugData - A function that handles the analysis of drug data.
+ * - analyzeDrugData - A function that handles the analysis of drug data from an image.
  * - AnalyzeDrugDataInput - The input type for the analyzeDrugData function.
  * - AnalyzeDrugDataOutput - The return type for the analyzeDrugData function.
  */
@@ -12,19 +12,20 @@ import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 
 const AnalyzeDrugDataInputSchema = z.object({
-  medicineName: z.string().describe('The name of the medicine to analyze.'),
-  batchNumber: z.string().optional().describe('The batch number of the medicine, if available.'),
+  photoDataUri: z
+    .string()
+    .describe(
+      "A photo of the medicine packaging, as a data URI that must include a MIME type and use Base64 encoding. Expected format: 'data:<mimetype>;base64,<encoded_data>'."
+    ),
 });
 export type AnalyzeDrugDataInput = z.infer<typeof AnalyzeDrugDataInputSchema>;
 
 const AnalyzeDrugDataOutputSchema = z.object({
-  isFalsified: z.boolean().describe('Whether the medicine is potentially falsified or dangerous.'),
-  alertSource: z.string().optional().describe('The source of the alert (WHO, FDA, CDSCO), if applicable.'),
-  reason: z.string().optional().describe('The reason for the falsification or danger, if applicable.'),
-  confidenceLevel: z
-    .number()
-    .optional()
-    .describe('A number from 0 to 1 representing the confidence level in the analysis.'),
+    primaryUses: z.string().optional().describe("What this medicine is typically prescribed for (e.g., Fever, Bacterial Infection, Hypertension)."),
+    howItWorks: z.string().optional().describe("A brief explanation of the mechanism (e.g., 'Reduces pain signals in the brain' or 'Kills specific bacteria')."),
+    commonIndications: z.array(z.string()).optional().describe("A list of 3-4 specific conditions it treats (e.g., Headache, Muscle pain, Toothache)."),
+    safetyDisclaimer: z.string().optional().describe("An explicit statement that this information is for educational purposes and the user must consult a doctor before consumption."),
+    error: z.string().optional().describe("If identification fails, provide the reason here. E.g., 'Identification failed. Please upload a clearer image showing the composition.'")
 });
 export type AnalyzeDrugDataOutput = z.infer<typeof AnalyzeDrugDataOutputSchema>;
 
@@ -33,20 +34,24 @@ export async function analyzeDrugData(input: AnalyzeDrugDataInput): Promise<Anal
 }
 
 const prompt = ai.definePrompt({
-  name: 'analyzeDrugDataPrompt',
+  name: 'analyzeDrugImagePrompt',
   input: {schema: AnalyzeDrugDataInputSchema},
   output: {schema: AnalyzeDrugDataOutputSchema},
-  prompt: `You are an expert in pharmaceutical safety and falsified medicines.
+  prompt: `You are an expert in pharmacology and medicine identification.
+From the provided image of the medicine packaging, identify the active ingredients.
 
-  You will analyze data from WHO Alerts, FDA Counterfeit lists, and CDSCO spurious drug reports to determine if the medicine is potentially falsified or dangerous.
-  If a match is found, identify the source of the alert (WHO, FDA, or CDSCO) and the reason for the failure. Provide a confidence level (0-1).
-  If no match is found, indicate that the medicine is not found in the databases with a high confidence level.
+If you can identify the ingredients, provide the following information:
+- Primary Uses: What is this medicine typically prescribed for? (e.g., Fever, Bacterial Infection, Hypertension).
+- How it Works: Briefly explain the mechanism (e.g., 'Reduces pain signals in the brain' or 'Kills specific bacteria').
+- Common Indications: List 3-4 specific conditions it treats (e.g., Headache, Muscle pain, Toothache).
+- Safety Disclaimer: Explicitly state that this information is for educational purposes and the user must consult a doctor before consumption.
 
-  Medicine Name: {{{medicineName}}}
-  Batch Number (if available): {{{batchNumber}}}
+If the image is too blurry to identify the active ingredients, set the 'error' field to: 'Identification failed. Please upload a clearer image showing the composition.'. In this case, do not populate the other fields.
 
-  Respond in JSON format.
-  `,
+Respond in JSON format.
+
+Image: {{media url=photoDataUri}}
+`,
 });
 
 const analyzeDrugDataFlow = ai.defineFlow(

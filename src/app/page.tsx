@@ -5,8 +5,7 @@ import { useScanner } from '@/hooks/use-scanner';
 import HomeScreen from '@/components/medilens/home-screen';
 import Scanner from '@/components/medilens/scanner';
 import AnalysisStepper from '@/components/medilens/analysis-stepper';
-import ManualQuestionnaire from '@/components/medilens/manual-questionnaire';
-import ResultsDashboard from '@/components/medilens/results-dashboard';
+import MedicineInfoDisplay from '@/components/medilens/medicine-info';
 import { Button } from '@/components/ui/button';
 
 export default function Home() {
@@ -16,7 +15,7 @@ export default function Home() {
     if (scanner.error) {
         return (
             <div className="text-center text-destructive">
-                <h2 className="text-2xl font-bold mb-4">An Error Occurred</h2>
+                <h2 className="text-2xl font-bold mb-4">Analysis Failed</h2>
                 <p>{scanner.error}</p>
                 <Button onClick={scanner.restart} className="mt-4">Try Again</Button>
             </div>
@@ -27,17 +26,8 @@ export default function Home() {
         return <Scanner handleImageCapture={scanner.handleImageCapture} onCancel={scanner.restart} />;
       case 'analyzing':
         return <AnalysisStepper steps={scanner.analysisSteps} />;
-      case 'questionnaire':
-        return (
-          <ManualQuestionnaire
-            question={scanner.questions[scanner.currentQuestionIndex]}
-            currentIndex={scanner.currentQuestionIndex}
-            total={scanner.questions.length}
-            onAnswer={scanner.answerQuestion}
-          />
-        );
-      case 'results':
-        return scanner.results ? <ResultsDashboard results={scanner.results} onRestart={scanner.restart} /> : <p>Loading results...</p>;
+      case 'info':
+        return scanner.medicineInfo ? <MedicineInfoDisplay info={scanner.medicineInfo} onRestart={scanner.restart} /> : <p>Loading results...</p>;
       case 'idle':
       default:
         return <HomeScreen onScan={scanner.startScan} />;

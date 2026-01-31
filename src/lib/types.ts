@@ -1,3 +1,10 @@
+export type MedicineInfo = {
+  primaryUses?: string;
+  howItWorks?: string;
+  commonIndications?: string[];
+  safetyDisclaimer?: string;
+};
+
 export type AnalysisResult = {
   isThreat: boolean;
   details: Array<{
@@ -8,7 +15,7 @@ export type AnalysisResult = {
 };
 
 
-export type ScannerState = 'idle' | 'scanning' | 'analyzing' | 'questionnaire' | 'results';
+export type ScannerState = 'idle' | 'scanning' | 'analyzing' | 'info' ;
 
 export type AnalysisStepStatus = 'pending' | 'in-progress' | 'complete' | 'error';
 export interface AnalysisStep {
