@@ -7,6 +7,7 @@ import Scanner from '@/components/medilens/scanner';
 import AnalysisStepper from '@/components/medilens/analysis-stepper';
 import MedicineInfoDisplay from '@/components/medilens/medicine-info';
 import { Button } from '@/components/ui/button';
+import { LiveAlertsTicker } from '@/components/medilens/live-alerts-ticker';
 
 export default function Home() {
   const scanner = useScanner();
@@ -37,11 +38,12 @@ export default function Home() {
   return (
     <div className="flex flex-col min-h-screen bg-background dark:bg-background">
       <Header />
-      <main className="flex-1 w-full container mx-auto px-4 py-8 flex items-center justify-center">
+      <main className="flex-1 w-full container mx-auto px-4 pt-8 pb-20 flex items-center justify-center">
         <div className="w-full max-w-lg text-center">
             {renderContent()}
         </div>
       </main>
+      <LiveAlertsTicker />
     </div>
   );
 }

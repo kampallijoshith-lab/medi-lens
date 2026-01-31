@@ -48,15 +48,15 @@ export default function HomeScreen({ onScan }: HomeScreenProps) {
       <h1 className="font-headline text-4xl md:text-5xl font-bold tracking-tighter mb-4 text-foreground">
         AI-Powered Medicine Verification
       </h1>
-      <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mb-8">
+      <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mb-6">
         Instantly verify the authenticity of your medication in three simple steps.
       </p>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12 w-full max-w-4xl">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-8 w-full max-w-4xl">
         {steps.map((step, index) => (
           <div key={index} className="flex flex-col items-center gap-2">
-            <div className="flex items-center justify-center bg-primary/10 text-primary rounded-full h-16 w-16 mb-2">
-              <step.icon className="w-8 h-8" />
+            <div className="flex items-center justify-center bg-primary/10 text-primary rounded-full h-12 w-12 mb-2">
+              <step.icon className="w-6 h-6" />
             </div>
             <h3 className="font-headline text-xl font-semibold">{step.title}</h3>
             <p className="text-muted-foreground text-sm">{step.description}</p>
