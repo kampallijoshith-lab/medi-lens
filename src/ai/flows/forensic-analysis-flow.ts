@@ -63,7 +63,6 @@ JSON Schema:
     model: 'googleai/gemini-2.5-pro',
     prompt: forensicPrompt,
     config: {
-      responseMimeType: 'application/json',
       temperature: 0,
       topP: 0.1,
       topK: 1,
@@ -180,7 +179,6 @@ Return JSON:
     model: 'googleai/gemini-2.5-pro',
     prompt: validatorSystemPrompt,
     config: {
-      responseMimeType: 'application/json',
       temperature: 0,
       topP: 0.1,
       topK: 1,

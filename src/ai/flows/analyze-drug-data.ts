@@ -11,6 +11,21 @@
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 
+// Helper to clean JSON from LLM responses
+function cleanJSON(str: string): string {
+    if (!str) return '';
+    try {
+      const firstBrace = str.indexOf('{');
+      const lastBrace = str.lastIndexOf('}');
+      if (firstBrace !== -1 && lastBrace !== -1) {
+        str = str.substring(firstBrace, lastBrace + 1);
+      }
+      return str.replace(/```json|```/g, '').trim();
+    } catch (e) {
+      return str;
+    }
+  }
+
 const AnalyzeDrugDataInputSchema = z.object({
   photoDataUri: z
     .string()
@@ -36,7 +51,6 @@ export async function analyzeDrugData(input: AnalyzeDrugDataInput): Promise<Anal
 const prompt = ai.definePrompt({
   name: 'analyzeDrugImagePrompt',
   input: {schema: AnalyzeDrugDataInputSchema},
-  output: {schema: AnalyzeDrugDataOutputSchema},
   model: 'googleai/gemini-2.5-pro',
   prompt: `You are an expert in pharmacology and medicine identification.
 From the provided image of the medicine packaging, identify the active ingredients.
@@ -49,7 +63,14 @@ If you can identify the ingredients, provide the following information:
 
 If the image is too blurry to identify the active ingredients, set the 'error' field to: 'Identification failed. Please upload a clearer image showing the composition.'. In this case, do not populate the other fields.
 
-Respond in JSON format.
+Respond ONLY with a valid JSON object that conforms to this schema:
+{
+  "primaryUses": "string",
+  "howItWorks": "string",
+  "commonIndications": ["string"],
+  "safetyDisclaimer": "string",
+  "error": "string"
+}
 
 Image: {{media url=photoDataUri}}
 `,
@@ -62,7 +83,8 @@ const analyzeDrugDataFlow = ai.defineFlow(
     outputSchema: AnalyzeDrugDataOutputSchema,
   },
   async input => {
-    const {output} = await prompt(input);
-    return output!;
+    const response = await prompt(input);
+    const cleanedJson = cleanJSON(response.text);
+    return JSON.parse(cleanedJson);
   }
 );
