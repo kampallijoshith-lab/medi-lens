@@ -9,6 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 interface HomeScreenProps {
   onScan: () => void;
   onUpload: (imageDataUrls: string[]) => void;
+  cooldown: number;
 }
 
 const steps = [
@@ -38,11 +39,20 @@ const readFileAsDataUrl = (file: File): Promise<string> => {
   });
 };
 
-export default function HomeScreen({ onScan, onUpload }: HomeScreenProps) {
+export default function HomeScreen({ onScan, onUpload, cooldown }: HomeScreenProps) {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  const cooldownActive = cooldown > 0;
 
   const handleUploadClick = () => {
+    if (cooldownActive) {
+      toast({
+        title: "Cooldown Active",
+        description: `Please wait ${cooldown} more seconds.`,
+        variant: "destructive"
+      });
+      return;
+    }
     fileInputRef.current?.click();
   };
   
@@ -102,15 +112,20 @@ export default function HomeScreen({ onScan, onUpload }: HomeScreenProps) {
             <CardDescription>Choose an option below to begin.</CardDescription>
         </CardHeader>
         <CardContent className="p-4 pt-0 flex flex-col gap-3">
-            <Button size="lg" onClick={onScan}>
+            <Button size="lg" onClick={onScan} disabled={cooldownActive}>
               <Camera className="mr-2" />
-              Scan Medicine
+              {cooldownActive ? `Please wait ${cooldown}s` : 'Scan Medicine'}
             </Button>
-            <Button size="lg" variant="secondary" onClick={handleUploadClick}>
+            <Button size="lg" variant="secondary" onClick={handleUploadClick} disabled={cooldownActive}>
               <Upload className="mr-2" />
-              Upload Photo(s)
+               {cooldownActive ? `Please wait ${cooldown}s` : 'Upload Photo(s)'}
             </Button>
             <input type="file" accept="image/*" ref={fileInputRef} onChange={handleFileSelect} className="hidden" multiple />
+            {cooldownActive && (
+              <p className="text-xs text-muted-foreground text-center">
+                  A brief cooldown is enabled to prevent hitting API rate limits.
+              </p>
+            )}
         </CardContent>
       </Card>
     </div>

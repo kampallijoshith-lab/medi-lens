@@ -60,7 +60,11 @@ export default function Home() {
         );
       case 'idle':
       default:
-        return <HomeScreen onScan={scanner.startScan} onUpload={scanner.handleMultipleImages} />;
+        return <HomeScreen 
+                    onScan={scanner.startScan} 
+                    onUpload={scanner.handleMultipleImages}
+                    cooldown={scanner.cooldown}
+                />;
     }
   };
 
