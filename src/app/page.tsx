@@ -13,10 +13,10 @@ export default function Home() {
   const scanner = useScanner();
 
   const renderContent = () => {
-    if (scanner.error) {
+    if (scanner.error && scanner.state !== 'info') { // Don't show global error if it's an analysis error
         return (
             <div className="text-center text-destructive">
-                <h2 className="text-2xl font-bold mb-4">Analysis Failed</h2>
+                <h2 className="text-2xl font-bold mb-4">An Error Occurred</h2>
                 <p>{scanner.error}</p>
                 <Button onClick={scanner.restart} className="mt-4">Try Again</Button>
             </div>
@@ -28,10 +28,15 @@ export default function Home() {
       case 'analyzing':
         return <AnalysisStepper steps={scanner.analysisSteps} />;
       case 'info':
-        return scanner.medicineInfo ? <MedicineInfoDisplay info={scanner.medicineInfo} onRestart={scanner.restart} /> : <p>Loading results...</p>;
+        return scanner.medicineInfo ? <MedicineInfoDisplay 
+                                            info={scanner.medicineInfo} 
+                                            onRestart={scanner.restart} 
+                                            onAnalyzeNext={scanner.analyzeNext}
+                                            hasNext={scanner.imageQueue.length > 0}
+                                        /> : <AnalysisStepper steps={scanner.analysisSteps} />; // Show stepper while results are loading
       case 'idle':
       default:
-        return <HomeScreen onScan={scanner.startScan} />;
+        return <HomeScreen onScan={scanner.startScan} onUpload={scanner.handleMultipleImages} />;
     }
   };
 

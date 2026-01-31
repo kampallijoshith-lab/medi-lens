@@ -3,14 +3,49 @@
 import type { MedicineInfo } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Info, Shield, List, AlertTriangle } from 'lucide-react';
+import { Info, Shield, List, AlertTriangle, AlertCircle } from 'lucide-react';
 
 interface MedicineInfoProps {
   info: MedicineInfo;
   onRestart: () => void;
+  onAnalyzeNext: () => void;
+  hasNext: boolean;
 }
 
-export default function MedicineInfoDisplay({ info, onRestart }: MedicineInfoProps) {
+export default function MedicineInfoDisplay({ info, onRestart, onAnalyzeNext, hasNext }: MedicineInfoProps) {
+  
+  const renderButtons = () => {
+    if (hasNext) {
+      return (
+        <Button onClick={onAnalyzeNext} className="w-full mt-4">
+          Analyze Next Image
+        </Button>
+      )
+    }
+    return (
+      <Button onClick={onRestart} className="w-full mt-4">
+        Scan Another Medicine
+      </Button>
+    )
+  }
+
+  if (info.error) {
+    return (
+      <Card className="w-full max-w-lg animate-in fade-in-50 border-destructive">
+        <CardHeader>
+          <div className="flex items-center gap-3">
+             <AlertCircle className="h-8 w-8 text-destructive" />
+             <CardTitle className="font-headline text-2xl text-destructive">Analysis Failed</CardTitle>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-6 text-center">
+            <p className="text-destructive-foreground">{info.error}</p>
+            {renderButtons()}
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card className="w-full max-w-lg animate-in fade-in-50">
       <CardHeader>
@@ -52,10 +87,8 @@ export default function MedicineInfoDisplay({ info, onRestart }: MedicineInfoPro
             <p className="text-sm text-accent-foreground/80">{info.safetyDisclaimer}</p>
           </div>
         )}
-
-        <Button onClick={onRestart} className="w-full mt-4">
-          Scan Another Medicine
-        </Button>
+        
+        {renderButtons()}
       </CardContent>
     </Card>
   );

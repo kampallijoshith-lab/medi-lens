@@ -3,6 +3,7 @@ export type MedicineInfo = {
   howItWorks?: string;
   commonIndications?: string[];
   safetyDisclaimer?: string;
+  error?: string;
 };
 
 export type AnalysisResult = {
