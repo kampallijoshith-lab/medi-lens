@@ -6,13 +6,10 @@ import { analyzeDrugData } from '@/ai/flows/analyze-drug-data';
 import { forensicAnalysisFlow } from '@/ai/flows/forensic-analysis-flow';
 
 const initialAnalysisSteps: AnalysisStep[] = [
-  { title: 'Uploading and queueing images...', status: 'pending', duration: 500 },
-  { title: 'Analyzing for general information...', status: 'pending', duration: 2000 },
-  { title: 'Performing forensic quality check...', status: 'pending', duration: 2000 },
-  { title: 'Extracting physical characteristics...', status: 'pending', duration: 2500 },
-  { title: 'Searching global medical databases...', status: 'pending', duration: 3000 },
-  { title: 'Validating against ground truth...', status: 'pending', duration: 2500 },
-  { title: 'Calculating authenticity score...', status: 'pending', duration: 1000 },
+  { title: 'Queueing image for analysis...', status: 'pending', duration: 500 },
+  { title: 'Analyzing packaging for general info...', status: 'pending', duration: 3000 },
+  { title: 'Performing deep forensic analysis...', status: 'pending', duration: 5000 },
+  { title: 'Finalizing report...', status: 'pending', duration: 1000 },
 ];
 
 export const useScanner = () => {
@@ -66,29 +63,24 @@ export const useScanner = () => {
       setMedicineInfo(infoResult.error ? { error: infoResult.error } : infoResult);
 
       // --- Second, longer flow (Sequential) ---
-      // This flow has multiple internal steps, but from the hook's perspective, we animate through our UI steps.
-      await runStep(2, currentSteps[2].duration); // Step 2: Forensic quality check...
-      await runStep(3, currentSteps[3].duration); // Step 3: Extracting...
-      await runStep(4, currentSteps[4].duration); // Step 4: Searching...
-      
-      await runStep(5); // Step 5: Validating...
+      await runStep(2); // Step 2: Deep forensic analysis...
       const forensicData = await forensicAnalysisFlow({ photoDataUri: imageDataUrl });
-      await new Promise(resolve => setTimeout(resolve, currentSteps[5].duration));
-      
-      await runStep(6, currentSteps[6].duration); // Step 6: Calculating score...
-
+      await new Promise(resolve => setTimeout(resolve, currentSteps[2].duration));
       setForensicResult(forensicData);
+      
+      await runStep(3, currentSteps[3].duration); // Step 3: Finalizing...
+
 
       // Finalize
       setAnalysisSteps(currentSteps.map(step => ({...step, status: 'complete'})));
       setState('results');
-      setCooldown(30);
+      setCooldown(60);
 
     } catch (e: any) {
       console.error(e);
       setError(e.message || 'An unexpected error occurred during analysis.');
       setState('results'); // Go to results to show the error
-      setCooldown(30);
+      setCooldown(60);
     }
   };
 

@@ -10,11 +10,9 @@ import {
   ForensicAnalysisInputSchema,
 } from '@/lib/types';
 
-export async function forensicAnalysisFlow(
-  input: z.infer<typeof ForensicAnalysisInputSchema>
-): Promise<ForensicAnalysisResult> {
-  // Helper to clean JSON from LLM responses
-  function cleanJSON(str: string): string {
+
+// Helper to clean JSON from LLM responses
+function cleanJSON(str: string): string {
     if (!str) return '';
     try {
       const firstBrace = str.indexOf('{');
@@ -26,212 +24,93 @@ export async function forensicAnalysisFlow(
     } catch (e) {
       return str;
     }
-  }
+}
 
-  // Helper to calculate weighted scores
-  function calculateWeight(status: string | undefined, fullWeight: number): number {
-    if (status === 'match') return fullWeight;
-    if (status === 'omission') return fullWeight * 0.5;
-    return 0; // conflict or undefined
-  }
 
-  // ======================================================================
-  // STEP 1: Quality Gate & Image Analysis
-  // ======================================================================
-  const forensicPrompt = `Role: You are a Senior Pharmaceutical Forensic Analyst.
-Task: Analyze image quality and extract physical pill characteristics.
-Instructions:
-- STEP 1 (Quality Gate): Audit for LENS_BLUR, EXCESSIVE_GLARE, or POOR_FRAMING. If the quality prevents a forensic audit, return ONLY the error code in the "quality_error" field.
-- Focus on the Imprint: Look for engravings or debossings. If unclear, set "unclear_imprint": true and provide "best_guess_imprint".
-- Physical Analysis: Identify shape, hex-specific color, and texture.
-- Strict JSON Output ONLY.
+export async function forensicAnalysisFlow(
+  input: z.infer<typeof ForensicAnalysisInputSchema>
+): Promise<ForensicAnalysisResult> {
+  
+  const forensicPrompt = `You are a world-class Pharmaceutical Forensic Analyst. Your task is to analyze an image of a pill and provide a comprehensive authenticity report in a single JSON response.
 
-JSON Schema:
+Follow these steps precisely:
+
+1.  **Quality Gate:** First, analyze the image quality. If the image suffers from severe LENS_BLUR, EXCESSIVE_GLARE, or POOR_FRAMING that makes analysis impossible, you MUST return a JSON object with ONLY the 'error' field set to a descriptive message (e.g., '{"error": "Image quality is too low due to blur."}'). Do not proceed further.
+
+2.  **Physical Feature Extraction:** If the image quality is acceptable, extract the pill's physical characteristics:
+    *   **Imprint:** The text or logo engraved on the pill. If it's unclear, note that.
+    *   **Color:** The primary and secondary colors as HEX codes.
+    *   **Shape:** The pill's shape (e.g., round, oval, capsule).
+
+3.  **Ground Truth Simulation:** Based on the extracted features, perform a simulated search of authoritative databases (like FDA, Drugs.com, DailyMed) to find the "ground truth" data for a legitimate pill with these characteristics. Synthesize this information.
+
+4.  **Comparative Analysis:** Compare the observed features (from Step 2) with the ground truth information (from Step 3). For each core feature (Imprint, Color, Shape), determine the status as "match", "conflict", or "omission" and provide a brief "reason" and an "evidence_quote" from your simulated ground truth.
+
+5.  **Source Reliability:** Evaluate the reliability of the (simulated) sources you used. If they are top-tier (e.g., .gov sites), this contributes positively to the score.
+
+6.  **Scoring and Verdict:** Based on your entire analysis, calculate a final "score" from 0 to 100, where 100 is definitively authentic. The scoring should be weighted: Imprint match is most important (approx. 40 points), Color match is next (20 points), Shape (10 points), and source reliability (15 points). Based on the final score, provide a "verdict": 'Authentic' (score > 85), 'Inconclusive' (65-85), or 'Counterfeit Risk' (<65).
+
+7.  **Final JSON Output:** Consolidate all findings into a single, valid JSON object that strictly conforms to the ForensicAnalysisResult schema provided below. Do not include any text outside of this JSON object.
+
+**JSON Schema to follow:**
+\`\`\`json
 {
-  "quality_error": "LENS_BLUR" | "EXCESSIVE_GLARE" | "POOR_FRAMING" | "NONE",
-  "detected_imprint": "string or 'NONE'",
-  "unclear_imprint": boolean,
-  "best_guess_imprint": "string",
-  "pill_color": { "primary_hex": "string", "secondary_hex": "string" },
-  "pill_shape": "string",
-  "surface_texture": "string",
-  "packaging_info": { "manufacturer": "string", "batch_no": "string", "expiry": "string" },
-  "ai_confidence_score": 0.0-1.0
-}`;
-
-  const visionResult = await ai.generate({
+  "score": "number",
+  "verdict": "'Authentic' | 'Inconclusive' | 'Counterfeit Risk'",
+  "imprint": "string",
+  "sources": [{ "uri": "string", "title": "string", "tier": "number (1 for official, 2 for other)" }],
+  "coreResults": {
+    "imprint": { "match": "boolean", "status": "string", "reason": "string", "evidence_quote": "string" },
+    "color": { "match": "boolean", "status": "string", "reason": "string", "evidence_quote": "string" },
+    "shape": { "match": "boolean", "status": "string", "reason": "string", "evidence_quote": "string" },
+    "generic": { "match": "boolean", "status": "string", "reason": "string", "evidence_quote": "string" },
+    "source": { "match": "boolean", "reason": "string" }
+  },
+  "detailed": [{ "name": "string", "status": "string", "evidence_quote": "string" }],
+  "timestamp": "ISO8601 string",
+  "scanId": "string"
+}
+\`\`\`
+Image for analysis:
+{{media url=photoDataUri}}
+`;
+  
+  const analysisResult = await ai.generate({
     model: 'googleai/gemini-2.5-flash',
     prompt: forensicPrompt,
     config: {
-      temperature: 0,
-      topP: 0.1,
-      topK: 1,
+        temperature: 0.1,
     },
     input: {
-      image: { url: input.photoDataUri },
+        photoDataUri: input.photoDataUri,
     },
   });
 
-  const visionData = JSON.parse(cleanJSON(visionResult.text));
+  const cleanedJson = cleanJSON(analysisResult.text);
+  const parsedJson = JSON.parse(cleanedJson);
 
-  if (visionData.quality_error && visionData.quality_error !== 'NONE') {
-    throw new Error(
-      `QUALITY_GATE_REJECTED: ${visionData.quality_error}. Please re-take the photo in better lighting.`
-    );
-  }
-  
-  // Pace the requests to avoid hitting rate limits
-  await new Promise(resolve => setTimeout(resolve, 2000));
-
-
-  // ======================================================================
-  // STEP 2: Ground Truth Research (Web Search)
-  // ======================================================================
-  const searchTerm =
-    visionData.unclear_imprint || visionData.detected_imprint === 'NONE'
-      ? `Physical description: ${visionData.pill_shape ?? 'unknown shape'} tablet with primary hex ${visionData.pill_color?.primary_hex ?? 'unknown color'} markings identification`
-      : `Official pharmacological monograph for tablet imprint "${
-          visionData.detected_imprint
-        }" ${
-          visionData.packaging_info?.manufacturer && visionData.packaging_info?.manufacturer !== 'NOT_VISIBLE'
-            ? 'by ' + visionData.packaging_info.manufacturer
-            : ''
-        }`;
-
-  const searchResult = await ai.generate({
-    model: 'googleai/gemini-2.5-flash',
-    prompt: searchTerm,
-    config: {
-      temperature: 0,
-      topP: 0.1,
-      topK: 1,
-    },
-  });
-  
-  const groundTruthText = searchResult.text;
-  const attributions = searchResult.references || [];
-
-  // Pace the requests to avoid hitting rate limits
-  await new Promise(resolve => setTimeout(resolve, 2000));
-  
-  // ======================================================================
-  // STEP 3: Source Reliability Scoring
-  // ======================================================================
-  const tier1Domains = [
-    '.gov', 'nic.in', 'drugs.com', 'dailymed.nlm.nih.gov', 'nih.gov', 'fda.gov', 'who.int'
-  ];
-  const tier2Domains = ['.com', '.org', '.net'];
-
-  let sourceScore = 0;
-  const sources = attributions.map((a: any) => {
-    const url = a.url?.toLowerCase() || '';
-    let tier = 0;
-    if (tier1Domains.some(d => url.includes(d))) tier = 1;
-    else if (tier2Domains.some(d => url.includes(d))) tier = 2;
-    return { uri: a.url, title: a.title, tier };
-  });
-
-  if (sources.some((s: any) => s.tier === 1)) {
-    sourceScore = 15;
-  } else if (sources.length > 0) {
-    sourceScore = 5;
+  if (parsedJson.error) {
+      throw new Error(parsedJson.error);
   }
 
-  // ======================================================================
-  // STEP 4: Conflict vs Omission Validation
-  // ======================================================================
-  const validatorSystemPrompt = `You are a validator. Compare forensic features against truth data.
-Observed Data: ${JSON.stringify(visionData)}
-Truth Data: ${groundTruthText}
-
-RULES:
-1. STATUS: Return "match", "conflict" (explicit contradiction), or "omission" (truth data is silent).
-2. SCORING: 
-   - match = Full Weight.
-   - conflict = 0 Points.
-   - omission = 50% Weight (Neutral).
-3. COLOR: Describe match hex-quantitatively (e.g., "Matches target hex #FFFFFF with 95% confidence").
-4. EVIDENCE: Provide a direct "evidence_quote" from the Truth Data for every decision.
-
-Return JSON:
-{
-  "coreMatches": {
-    "imprint": {"status": "match"|"conflict"|"omission", "reason": "string", "evidence_quote": "string"},
-    "color": {"status": "match"|"conflict"|"omission", "reason": "string", "evidence_quote": "string"},
-    "shape": {"status": "match"|"conflict"|"omission", "reason": "string", "evidence_quote": "string"},
-    "generic": {"status": "match"|"conflict"|"omission", "reason": "string", "evidence_quote": "string"}
-  },
-  "detailedFactors": [
-     {"name": "string", "status": "match"|"conflict"|"omission", "evidence_quote": "string"}
-  ]
-}`;
-
-  const validatorResult = await ai.generate({
-    model: 'googleai/gemini-2.5-flash',
-    prompt: validatorSystemPrompt,
-    config: {
-      temperature: 0,
-      topP: 0.1,
-      topK: 1,
-    },
-  });
-
-  const validatorData = JSON.parse(cleanJSON(validatorResult.text ?? '{}'));
-
-  // ======================================================================
-  // STEP 5: Final Scoring Calculation
-  // ======================================================================
-  let finalScore = 0;
-  finalScore += calculateWeight(validatorData.coreMatches?.imprint?.status, 40);
-  finalScore += calculateWeight(validatorData.coreMatches?.color?.status, 20);
-  finalScore += calculateWeight(validatorData.coreMatches?.generic?.status, 15);
-  finalScore += calculateWeight(validatorData.coreMatches?.shape?.status, 10);
-  finalScore += sourceScore;
-
-  const verdict =
-    finalScore > 85
-      ? 'Authentic'
-      : finalScore > 65
-      ? 'Inconclusive'
-      : 'Counterfeit Risk';
-
-  // ======================================================================
-  // STEP 6: Format Final Response
-  // ======================================================================
-  const resultData: ForensicAnalysisResult = {
-    score: Math.round(finalScore),
-    verdict,
-    imprint: visionData.detected_imprint ?? 'Not detected',
-    sources: sources.slice(0, 4),
+  // Fill in any missing data or format it correctly
+  const finalResult: ForensicAnalysisResult = {
+    ...parsedJson,
+    score: parsedJson.score ?? 0,
+    verdict: parsedJson.verdict ?? 'Inconclusive',
+    imprint: parsedJson.imprint ?? 'Not detected',
+    sources: parsedJson.sources ?? [],
     coreResults: {
-      imprint: {
-        match: validatorData.coreMatches?.imprint?.status !== 'conflict',
-        ...(validatorData.coreMatches?.imprint ?? { status: 'omission', reason: 'Data not returned by AI.', evidence_quote: '' }),
-      },
-      color: {
-        match: validatorData.coreMatches?.color?.status !== 'conflict',
-        ...(validatorData.coreMatches?.color ?? { status: 'omission', reason: 'Data not returned by AI.', evidence_quote: '' }),
-      },
-      shape: {
-        match: validatorData.coreMatches?.shape?.status !== 'conflict',
-        ...(validatorData.coreMatches?.shape ?? { status: 'omission', reason: 'Data not returned by AI.', evidence_quote: '' }),
-      },
-      generic: {
-        match: validatorData.coreMatches?.generic?.status !== 'conflict',
-        ...(validatorData.coreMatches?.generic ?? { status: 'omission', reason: 'Data not returned by AI.', evidence_quote: '' }),
-      },
-      source: {
-        match: sourceScore >= 5,
-        reason:
-          sourceScore === 15
-            ? 'Verified via Tier 1 official sources.'
-            : 'Sources limited to Tier 2.',
-      },
+        imprint: parsedJson.coreResults?.imprint ?? { match: false, status: 'omission', reason: 'AI response missing data.' , evidence_quote: ''},
+        color: parsedJson.coreResults?.color ?? { match: false, status: 'omission', reason: 'AI response missing data.', evidence_quote: '' },
+        shape: parsedJson.coreResults?.shape ?? { match: false, status: 'omission', reason: 'AI response missing data.', evidence_quote: '' },
+        generic: parsedJson.coreResults?.generic ?? { match: false, status: 'omission', reason: 'AI response missing data.', evidence_quote: '' },
+        source: parsedJson.coreResults?.source ?? { match: false, reason: 'AI response missing data.' },
     },
-    detailed: validatorData.detailedFactors || [],
+    detailed: parsedJson.detailed ?? [],
     timestamp: new Date().toISOString(),
     scanId: `scan_${new Date().getTime()}`,
   };
 
-  return resultData;
+  return finalResult;
 }
