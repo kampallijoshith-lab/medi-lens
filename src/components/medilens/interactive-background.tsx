@@ -16,7 +16,7 @@ const InteractiveBackground: React.FC = () => {
     let height = (canvas.height = window.innerHeight);
 
     let mouse = { x: -1000, y: -1000, radius: 150 };
-    const numParticles = 7;
+    const numParticles = 12;
     const particles: Particle[] = [];
     
     const iconTypes = ['capsule', 'pill', 'dna'];
@@ -47,7 +47,7 @@ const InteractiveBackground: React.FC = () => {
         ctx!.translate(this.x, this.y);
         ctx!.rotate(this.rotation);
 
-        ctx!.globalAlpha = 0.1;
+        ctx!.globalAlpha = 0.05;
         ctx!.fillStyle = 'hsl(var(--primary))';
         ctx!.strokeStyle = 'hsl(var(--primary))';
         ctx!.lineWidth = 1.5;
