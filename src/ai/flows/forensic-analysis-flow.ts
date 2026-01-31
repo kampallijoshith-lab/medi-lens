@@ -60,7 +60,7 @@ JSON Schema:
 }`;
 
   const visionResult = await ai.generate({
-    model: 'googleai/gemini-1.5-pro-latest',
+    model: 'googleai/gemini-1.5-pro',
     prompt: forensicPrompt,
     config: {
       responseMimeType: 'application/json',
@@ -111,7 +111,7 @@ JSON Schema:
 
 
   const searchResult = await ai.generate({
-    model: 'googleai/gemini-1.5-pro-latest',
+    model: 'googleai/gemini-1.5-pro',
     prompt: searchTerm,
     tools: [searchTool],
     config: {
@@ -177,7 +177,7 @@ Return JSON:
 }`;
 
   const validatorResult = await ai.generate({
-    model: 'googleai/gemini-1.5-pro-latest',
+    model: 'googleai/gemini-1.5-pro',
     prompt: validatorSystemPrompt,
     config: {
       responseMimeType: 'application/json',
