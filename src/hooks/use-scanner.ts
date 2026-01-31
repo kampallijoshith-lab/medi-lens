@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import type { ScannerState, AnalysisStep, MedicineInfo, ForensicAnalysisResult } from '@/lib/types';
 import { analyzeDrugData } from '@/ai/flows/analyze-drug-data';
 import { forensicAnalysisFlow } from '@/ai/flows/forensic-analysis-flow';
@@ -23,6 +23,15 @@ export const useScanner = () => {
   const [forensicResult, setForensicResult] = useState<ForensicAnalysisResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [imageQueue, setImageQueue] = useState<string[]>([]);
+  const [cooldown, setCooldown] = useState(0);
+
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const timerId = setTimeout(() => {
+      setCooldown(prev => prev - 1);
+    }, 1000);
+    return () => clearTimeout(timerId);
+  }, [cooldown]);
 
   const _runAnalysis = async (imageDataUrl: string) => {
     // Reset states for new analysis
@@ -73,11 +82,13 @@ export const useScanner = () => {
       // Finalize
       setAnalysisSteps(currentSteps.map(step => ({...step, status: 'complete'})));
       setState('results');
+      setCooldown(30);
 
     } catch (e: any) {
       console.error(e);
       setError(e.message || 'An unexpected error occurred during analysis.');
       setState('results'); // Go to results to show the error
+      setCooldown(30);
     }
   };
 
@@ -135,13 +146,14 @@ export const useScanner = () => {
   }, [imageQueue, _startAnalysisWithQueue]);
 
   const restart = useCallback(() => {
+    if (cooldown > 0) return;
     setState('idle');
     setImage(null);
     setMedicineInfo(null);
     setForensicResult(null);
     setError(null);
     setImageQueue([]);
-  }, []);
+  }, [cooldown]);
 
   return {
     state,
@@ -151,6 +163,7 @@ export const useScanner = () => {
     forensicResult,
     error,
     imageQueue,
+    cooldown,
     startScan,
     handleImageCapture,
     handleMultipleImages,

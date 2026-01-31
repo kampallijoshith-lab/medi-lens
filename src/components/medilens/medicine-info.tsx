@@ -11,12 +11,14 @@ interface MedicineInfoProps {
   onAnalyzeNext: () => void;
   hasNext: boolean;
   showActions?: boolean;
+  cooldown?: number;
 }
 
-export default function MedicineInfoDisplay({ info, onRestart, onAnalyzeNext, hasNext, showActions = true }: MedicineInfoProps) {
+export default function MedicineInfoDisplay({ info, onRestart, onAnalyzeNext, hasNext, showActions = true, cooldown = 0 }: MedicineInfoProps) {
   
   const renderButtons = () => {
     if (!showActions) return null;
+    const cooldownActive = cooldown > 0;
 
     if (hasNext) {
       return (
@@ -26,9 +28,16 @@ export default function MedicineInfoDisplay({ info, onRestart, onAnalyzeNext, ha
       )
     }
     return (
-      <Button onClick={onRestart} className="w-full mt-4">
-        Scan Another Medicine
-      </Button>
+      <>
+        <Button onClick={onRestart} className="w-full mt-4" disabled={cooldownActive}>
+          {cooldownActive ? `Please wait ${cooldown}s` : 'Scan Another Medicine'}
+        </Button>
+        {cooldownActive && (
+          <p className="text-xs text-muted-foreground text-center mt-2">
+              A brief cooldown is enabled to prevent hitting API rate limits.
+          </p>
+        )}
+      </>
     )
   }
 

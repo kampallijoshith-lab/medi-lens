@@ -14,6 +14,7 @@ import { useState } from 'react';
 interface ResultsDashboardProps {
   results: ForensicAnalysisResult;
   onRestart: () => void;
+  cooldown: number;
 }
 
 const verdictConfig: Record<Verdict, {
@@ -42,11 +43,12 @@ const verdictConfig: Record<Verdict, {
   },
 };
 
-export default function ResultsDashboard({ results, onRestart }: ResultsDashboardProps) {
+export default function ResultsDashboard({ results, onRestart, cooldown }: ResultsDashboardProps) {
   const { verdict, score } = results;
   const config = verdictConfig[verdict];
   const { toast } = useToast();
   const [isReporting, setIsReporting] = useState(false);
+  const cooldownActive = cooldown > 0;
 
   const handleReport = async () => {
     setIsReporting(true);
@@ -132,8 +134,8 @@ export default function ResultsDashboard({ results, onRestart }: ResultsDashboar
                 <Flag className="mr-2"/> {isReporting ? 'Reporting...' : 'Report as Counterfeit'}
               </Button>
             )}
-            <Button size="lg" variant="outline" onClick={onRestart}>
-              <RotateCcw className="mr-2"/> Start New Scan
+            <Button size="lg" variant="outline" onClick={onRestart} disabled={cooldownActive}>
+              <RotateCcw className="mr-2"/> {cooldownActive ? `Wait ${cooldown}s...` : 'Start New Scan'}
             </Button>
         </div>
       </CardContent>
