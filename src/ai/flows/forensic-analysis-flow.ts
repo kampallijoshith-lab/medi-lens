@@ -79,6 +79,10 @@ JSON Schema:
       `QUALITY_GATE_REJECTED: ${visionData.quality_error}. Please re-take the photo in better lighting.`
     );
   }
+  
+  // Pace the requests to avoid hitting rate limits
+  await new Promise(resolve => setTimeout(resolve, 1000));
+
 
   // ======================================================================
   // STEP 2: Ground Truth Research (Web Search)
@@ -106,6 +110,9 @@ JSON Schema:
   
   const groundTruthText = searchResult.text;
   const attributions = searchResult.references || [];
+
+  // Pace the requests to avoid hitting rate limits
+  await new Promise(resolve => setTimeout(resolve, 1000));
   
   // ======================================================================
   // STEP 3: Source Reliability Scoring
