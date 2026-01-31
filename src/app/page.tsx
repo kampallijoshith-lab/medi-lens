@@ -38,8 +38,8 @@ export default function Home() {
   return (
     <div className="flex flex-col min-h-screen bg-background dark:bg-background">
       <Header />
-      <main className="flex-1 w-full container mx-auto px-4 pt-8 pb-20 flex items-center justify-center">
-        <div className="w-full max-w-lg text-center">
+      <main className="flex-1 w-full container mx-auto px-4 pt-8 pb-20 flex items-stretch justify-center">
+        <div className="w-full max-w-lg text-center flex flex-col">
             {renderContent()}
         </div>
       </main>
