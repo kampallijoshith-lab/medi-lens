@@ -33,7 +33,7 @@ export const useScanner = () => {
 
     let currentSteps = [...initialAnalysisSteps].map(s => ({ ...s, status: 'pending' as const }));
 
-    const runStep = async (index: number) => {
+    const runStep = async (index: number, duration?: number) => {
       if (index < currentSteps.length) {
         currentSteps = currentSteps.map((step, idx) => 
             idx < index ? { ...step, status: 'complete' } :
@@ -41,33 +41,36 @@ export const useScanner = () => {
             step
         );
         setAnalysisSteps(currentSteps);
-        await new Promise(resolve => setTimeout(resolve, currentSteps[index].duration));
+        if (duration) {
+            await new Promise(resolve => setTimeout(resolve, duration));
+        }
       }
     };
     
-    // Animate first step
-    await runStep(0); 
-
-    // Run analyses in parallel
-    const infoPromise = analyzeDrugData({ photoDataUri: imageDataUrl });
-    const forensicPromise = forensicAnalysisFlow({ photoDataUri: imageDataUrl });
-    
-    // Animate steps while waiting
-    await runStep(1);
-    await runStep(2);
-    await runStep(3);
-    await runStep(4);
-
     try {
-      const [infoResult, forensicData] = await Promise.all([infoPromise, forensicPromise]);
-      
-      // Animate remaining steps
-      await runStep(5);
-      await runStep(6);
+      await runStep(0, currentSteps[0].duration); // Step 0: Uploading...
 
+      // --- First API Call (Sequential) ---
+      await runStep(1); // Step 1: Analyzing for general info...
+      const infoResult = await analyzeDrugData({ photoDataUri: imageDataUrl });
+      await new Promise(resolve => setTimeout(resolve, currentSteps[1].duration));
       setMedicineInfo(infoResult.error ? { error: infoResult.error } : infoResult);
+
+      // --- Second, longer flow (Sequential) ---
+      // This flow has multiple internal steps, but from the hook's perspective, we animate through our UI steps.
+      await runStep(2, currentSteps[2].duration); // Step 2: Forensic quality check...
+      await runStep(3, currentSteps[3].duration); // Step 3: Extracting...
+      await runStep(4, currentSteps[4].duration); // Step 4: Searching...
+      
+      await runStep(5); // Step 5: Validating...
+      const forensicData = await forensicAnalysisFlow({ photoDataUri: imageDataUrl });
+      await new Promise(resolve => setTimeout(resolve, currentSteps[5].duration));
+      
+      await runStep(6, currentSteps[6].duration); // Step 6: Calculating score...
+
       setForensicResult(forensicData);
 
+      // Finalize
       setAnalysisSteps(currentSteps.map(step => ({...step, status: 'complete'})));
       setState('results');
 
