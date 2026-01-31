@@ -40,7 +40,7 @@ const AnalyzeDrugDataOutputSchema = z.object({
     howItWorks: z.string().optional().describe("A brief explanation of the mechanism (e.g., 'Reduces pain signals in the brain' or 'Kills specific bacteria')."),
     commonIndications: z.array(z.string()).optional().describe("A list of 3-4 specific conditions it treats (e.g., Headache, Muscle pain, Toothache)."),
     safetyDisclaimer: z.string().optional().describe("An explicit statement that this information is for educational purposes and the user must consult a doctor before consumption."),
-    error: z.string().optional().describe("If identification fails, provide the reason here. E.g., 'Identification failed. Please upload a clearer image showing the composition.'")
+    error: z.string().optional().nullable().describe("If identification fails, provide the reason here. E.g., 'Identification failed. Please upload a clearer image showing the composition.'")
 });
 export type AnalyzeDrugDataOutput = z.infer<typeof AnalyzeDrugDataOutputSchema>;
 
