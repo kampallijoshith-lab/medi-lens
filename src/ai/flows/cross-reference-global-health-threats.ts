@@ -10,11 +10,6 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
-import admin from 'firebase-admin';
-
-if (!admin.apps.length) {
-  admin.initializeApp();
-}
 
 const CrossReferenceInputSchema = z.object({
   medicineInfo: z
@@ -68,41 +63,7 @@ const crossReferenceFlow = ai.defineFlow(
     outputSchema: CrossReferenceOutputSchema,
   },
   async input => {
-    // Simulate fetching data from Firestore
-    const db = admin.firestore();
-    const globalHealthThreatsCollection = db.collection('GlobalHealthThreats');
-    const snapshot = await globalHealthThreatsCollection.get();
-
-    let matchFound = false;
-    let alertDetails = undefined;
-    let source = undefined;
-    let reason = undefined;
-
-    snapshot.forEach(doc => {
-      const data = doc.data();
-      if (
-        (data.medicineName && input.medicineInfo.includes(data.medicineName)) ||
-        (data.batchNumber && input.medicineInfo.includes(data.batchNumber))
-      ) {
-        matchFound = true;
-        alertDetails = data.alertDetails;
-        source = data.source;
-        reason = data.reason;
-      }
-    });
-
-    // If no match is found in Firestore, use the LLM to check against known threats
-    if (!matchFound) {
-      const {output} = await prompt(input);
-      return output!;
-    } else {
-      // If a match is found in Firestore, return the data
-      return {
-        matchFound: true,
-        alertDetails: alertDetails,
-        source: source,
-        reason: reason,
-      };
-    }
+    const {output} = await prompt(input);
+    return output!;
   }
 );
