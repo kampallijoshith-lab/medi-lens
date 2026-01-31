@@ -13,6 +13,43 @@ const initialAnalysisSteps: AnalysisStep[] = [
 const COOLDOWN_SECONDS = 60;
 const COOLDOWN_STORAGE_KEY = 'medilens_cooldown_end_time';
 
+// Helper function to resize images before upload
+const resizeImage = (dataUrl: string, maxWidth: number, maxHeight: number): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            let { width, height } = img;
+
+            if (width > height) {
+                if (width > maxWidth) {
+                    height = Math.round((height * maxWidth) / width);
+                    width = maxWidth;
+                }
+            } else {
+                if (height > maxHeight) {
+                    width = Math.round((width * maxHeight) / height);
+                    height = maxHeight;
+                }
+            }
+
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            if (!ctx) {
+                return reject(new Error('Could not get canvas context'));
+            }
+            ctx.drawImage(img, 0, 0, width, height);
+            
+            // Using JPEG with a quality setting for efficient compression
+            resolve(canvas.toDataURL('image/jpeg', 0.9)); 
+        };
+        img.onerror = (err) => reject(err);
+        img.src = dataUrl;
+    });
+};
+
+
 export const useScanner = () => {
   const [state, setState] = useState<ScannerState>('idle');
   const [image, setImage] = useState<string | null>(null);
@@ -121,7 +158,7 @@ export const useScanner = () => {
     }
   };
 
-  const _startAnalysisWithQueue = useCallback((imageDataUrls: string[]) => {
+  const _startAnalysisWithQueue = useCallback(async (imageDataUrls: string[]) => {
     if (imageDataUrls.length === 0) {
       setState('idle');
       setImage(null);
@@ -132,13 +169,25 @@ export const useScanner = () => {
       return;
     }
 
-    const nextImage = imageDataUrls[0];
-    const remainingImages = imageDataUrls.slice(1);
+    try {
+      // Set a processing state while resizing
+      setAnalysisSteps(initialAnalysisSteps.map(s => s.title === 'Queueing image for analysis...' ? { ...s, status: 'in-progress' } : s));
+      setState('analyzing');
 
-    setImage(nextImage);
-    setImageQueue(remainingImages);
-    setAnalysisSteps(initialAnalysisSteps.map(s => ({ ...s, status: 'pending' })));
-    _runAnalysis(nextImage);
+      const nextImage = imageDataUrls[0];
+      const remainingImages = imageDataUrls.slice(1);
+      
+      const resizedImage = await resizeImage(nextImage, 1024, 1024);
+
+      setImage(resizedImage);
+      setImageQueue(remainingImages);
+      setAnalysisSteps(initialAnalysisSteps.map(s => ({ ...s, status: 'pending' })));
+      _runAnalysis(resizedImage);
+    } catch(e: any) {
+        console.error("Image processing failed:", e);
+        setError(e.message || "Failed to process image before upload.");
+        setState('idle');
+    }
   }, []);
 
   const startScan = useCallback(() => {
@@ -152,20 +201,20 @@ export const useScanner = () => {
     setAnalysisSteps(initialAnalysisSteps.map(s => ({ ...s, status: 'pending' })));
   }, [cooldown]);
 
-  const handleImageCapture = useCallback((imageDataUrl: string) => {
-    _startAnalysisWithQueue([imageDataUrl]);
+  const handleImageCapture = useCallback(async (imageDataUrl: string) => {
+    await _startAnalysisWithQueue([imageDataUrl]);
   }, [_startAnalysisWithQueue]);
 
-  const handleMultipleImages = useCallback((imageDataUrls: string[]) => {
+  const handleMultipleImages = useCallback(async (imageDataUrls: string[]) => {
     if (imageDataUrls.length > 0) {
-      _startAnalysisWithQueue(imageDataUrls);
+      await _startAnalysisWithQueue(imageDataUrls);
     }
   }, [_startAnalysisWithQueue]);
 
-  const analyzeNext = useCallback(() => {
+  const analyzeNext = useCallback(async () => {
     if (cooldown > 0) return;
     if(imageQueue.length > 0) {
-      _startAnalysisWithQueue(imageQueue);
+      await _startAnalysisWithQueue(imageQueue);
     } else {
       setState('idle');
       setImage(null);
