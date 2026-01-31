@@ -54,21 +54,22 @@ export const useScanner = () => {
     };
     
     try {
-      await runStep(0, currentSteps[0].duration); // Step 0: Uploading...
+      await runStep(0, currentSteps[0].duration);
 
-      // --- First API Call (Sequential) ---
-      await runStep(1); // Step 1: Analyzing for general info...
-      const infoResult = await analyzeDrugData({ photoDataUri: imageDataUrl });
-      await new Promise(resolve => setTimeout(resolve, currentSteps[1].duration));
+      // --- First API Call ---
+      await runStep(1);
+      const infoPromise = analyzeDrugData({ photoDataUri: imageDataUrl });
+
+      // --- Second API Call ---
+      await runStep(2);
+      const forensicPromise = forensicAnalysisFlow({ photoDataUri: imageDataUrl });
+      
+      const [infoResult, forensicData] = await Promise.all([infoPromise, forensicPromise]);
+
       setMedicineInfo(infoResult.error ? { error: infoResult.error } : infoResult);
-
-      // --- Second, longer flow (Sequential) ---
-      await runStep(2); // Step 2: Deep forensic analysis...
-      const forensicData = await forensicAnalysisFlow({ photoDataUri: imageDataUrl });
-      await new Promise(resolve => setTimeout(resolve, currentSteps[2].duration));
       setForensicResult(forensicData);
       
-      await runStep(3, currentSteps[3].duration); // Step 3: Finalizing...
+      await runStep(3, currentSteps[3].duration);
 
 
       // Finalize
@@ -125,6 +126,7 @@ export const useScanner = () => {
   }, [_startAnalysisWithQueue]);
 
   const analyzeNext = useCallback(() => {
+    if (cooldown > 0) return;
     if(imageQueue.length > 0) {
       _startAnalysisWithQueue(imageQueue);
     } else {
@@ -135,7 +137,7 @@ export const useScanner = () => {
       setError(null);
       setImageQueue([]);
     }
-  }, [imageQueue, _startAnalysisWithQueue]);
+  }, [imageQueue, _startAnalysisWithQueue, cooldown]);
 
   const restart = useCallback(() => {
     if (cooldown > 0) return;

@@ -22,8 +22,8 @@ export default function MedicineInfoDisplay({ info, onRestart, onAnalyzeNext, ha
 
     if (hasNext) {
       return (
-        <Button onClick={onAnalyzeNext} className="w-full mt-4">
-          Analyze Next Image
+        <Button onClick={onAnalyzeNext} className="w-full mt-4" disabled={cooldownActive}>
+          {cooldownActive ? `Please wait ${cooldown}s` : 'Analyze Next Image'}
         </Button>
       )
     }
