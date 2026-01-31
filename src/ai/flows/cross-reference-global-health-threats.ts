@@ -10,7 +10,11 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
-import {firestore} from 'firebase-admin';
+import admin from 'firebase-admin';
+
+if (!admin.apps.length) {
+  admin.initializeApp();
+}
 
 const CrossReferenceInputSchema = z.object({
   medicineInfo: z
@@ -65,7 +69,7 @@ const crossReferenceFlow = ai.defineFlow(
   },
   async input => {
     // Simulate fetching data from Firestore
-    const db = firestore();
+    const db = admin.firestore();
     const globalHealthThreatsCollection = db.collection('GlobalHealthThreats');
     const snapshot = await globalHealthThreatsCollection.get();
 
@@ -77,8 +81,8 @@ const crossReferenceFlow = ai.defineFlow(
     snapshot.forEach(doc => {
       const data = doc.data();
       if (
-        input.medicineInfo.includes(data.medicineName) ||
-        input.medicineInfo.includes(data.batchNumber)
+        (data.medicineName && input.medicineInfo.includes(data.medicineName)) ||
+        (data.batchNumber && input.medicineInfo.includes(data.batchNumber))
       ) {
         matchFound = true;
         alertDetails = data.alertDetails;
