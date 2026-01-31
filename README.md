@@ -78,3 +78,6 @@ The core AI logic is managed by Genkit flows located in `src/ai/flows/`.
 ## 📄 License
 
 This project is licensed under the MIT License.
+
+---
+Built with ❤️ by the Jarvis Team
