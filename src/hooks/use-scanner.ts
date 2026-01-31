@@ -10,6 +10,9 @@ const initialAnalysisSteps: AnalysisStep[] = [
   { title: 'Finalizing report...', status: 'pending', duration: 1000 },
 ];
 
+const COOLDOWN_SECONDS = 60;
+const COOLDOWN_STORAGE_KEY = 'medilens_cooldown_end_time';
+
 export const useScanner = () => {
   const [state, setState] = useState<ScannerState>('idle');
   const [image, setImage] = useState<string | null>(null);
@@ -20,6 +23,23 @@ export const useScanner = () => {
   const [imageQueue, setImageQueue] = useState<string[]>([]);
   const [cooldown, setCooldown] = useState(0);
 
+  // On initial load, check localStorage for an existing cooldown
+  useEffect(() => {
+    try {
+      const endTime = localStorage.getItem(COOLDOWN_STORAGE_KEY);
+      if (endTime) {
+        const remainingTime = Math.ceil((parseInt(endTime) - Date.now()) / 1000);
+        if (remainingTime > 0) {
+          setCooldown(remainingTime);
+        }
+      }
+    } catch (e) {
+        // LocalStorage might be disabled (e.g. in private browsing)
+        console.warn("Could not access localStorage for cooldown.", e);
+    }
+  }, []);
+
+  // Countdown timer effect
   useEffect(() => {
     if (cooldown <= 0) return;
     const timerId = setTimeout(() => {
@@ -27,6 +47,17 @@ export const useScanner = () => {
     }, 1000);
     return () => clearTimeout(timerId);
   }, [cooldown]);
+
+  const startCooldown = () => {
+    try {
+      const endTime = Date.now() + COOLDOWN_SECONDS * 1000;
+      localStorage.setItem(COOLDOWN_STORAGE_KEY, endTime.toString());
+      setCooldown(COOLDOWN_SECONDS);
+    } catch (e) {
+      console.warn("Could not access localStorage for cooldown.", e);
+      setCooldown(COOLDOWN_SECONDS); // Fallback for environments without localStorage
+    }
+  };
 
   const _runAnalysis = async (imageDataUrl: string) => {
     // Reset states for new analysis
@@ -80,13 +111,13 @@ export const useScanner = () => {
       // Finalize
       setAnalysisSteps(currentSteps.map(step => ({...step, status: 'complete'})));
       setState('results');
-      setCooldown(60);
+      startCooldown();
 
     } catch (e: any) {
       console.error(e);
       setError(e.message || 'An unexpected error occurred during analysis.');
       setState('results'); // Go to results to show the error
-      setCooldown(60);
+      startCooldown();
     }
   };
 
