@@ -81,7 +81,7 @@ JSON Schema:
   }
   
   // Pace the requests to avoid hitting rate limits
-  await new Promise(resolve => setTimeout(resolve, 1000));
+  await new Promise(resolve => setTimeout(resolve, 2000));
 
 
   // ======================================================================
@@ -112,7 +112,7 @@ JSON Schema:
   const attributions = searchResult.references || [];
 
   // Pace the requests to avoid hitting rate limits
-  await new Promise(resolve => setTimeout(resolve, 1000));
+  await new Promise(resolve => setTimeout(resolve, 2000));
   
   // ======================================================================
   // STEP 3: Source Reliability Scoring
@@ -176,7 +176,7 @@ Return JSON:
     },
   });
 
-  const validatorData = JSON.parse(cleanJSON(validatorResult.text));
+  const validatorData = JSON.parse(cleanJSON(validatorResult.text ?? '{}'));
 
   // ======================================================================
   // STEP 5: Final Scoring Calculation
