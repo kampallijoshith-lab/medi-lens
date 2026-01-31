@@ -29,10 +29,10 @@ export async function forensicAnalysisFlow(
   }
 
   // Helper to calculate weighted scores
-  function calculateWeight(status: string, fullWeight: number): number {
+  function calculateWeight(status: string | undefined, fullWeight: number): number {
     if (status === 'match') return fullWeight;
     if (status === 'omission') return fullWeight * 0.5;
-    return 0; // conflict
+    return 0; // conflict or undefined
   }
 
   // ======================================================================
@@ -89,11 +89,11 @@ JSON Schema:
   // ======================================================================
   const searchTerm =
     visionData.unclear_imprint || visionData.detected_imprint === 'NONE'
-      ? `Physical description: ${visionData.pill_shape} tablet with primary hex ${visionData.pill_color.primary_hex} markings identification`
+      ? `Physical description: ${visionData.pill_shape ?? 'unknown shape'} tablet with primary hex ${visionData.pill_color?.primary_hex ?? 'unknown color'} markings identification`
       : `Official pharmacological monograph for tablet imprint "${
           visionData.detected_imprint
         }" ${
-          visionData.packaging_info.manufacturer !== 'NOT_VISIBLE'
+          visionData.packaging_info?.manufacturer && visionData.packaging_info?.manufacturer !== 'NOT_VISIBLE'
             ? 'by ' + visionData.packaging_info.manufacturer
             : ''
         }`;
@@ -182,10 +182,10 @@ Return JSON:
   // STEP 5: Final Scoring Calculation
   // ======================================================================
   let finalScore = 0;
-  finalScore += calculateWeight(validatorData.coreMatches.imprint.status, 40);
-  finalScore += calculateWeight(validatorData.coreMatches.color.status, 20);
-  finalScore += calculateWeight(validatorData.coreMatches.generic.status, 15);
-  finalScore += calculateWeight(validatorData.coreMatches.shape.status, 10);
+  finalScore += calculateWeight(validatorData.coreMatches?.imprint?.status, 40);
+  finalScore += calculateWeight(validatorData.coreMatches?.color?.status, 20);
+  finalScore += calculateWeight(validatorData.coreMatches?.generic?.status, 15);
+  finalScore += calculateWeight(validatorData.coreMatches?.shape?.status, 10);
   finalScore += sourceScore;
 
   const verdict =
@@ -201,24 +201,24 @@ Return JSON:
   const resultData: ForensicAnalysisResult = {
     score: Math.round(finalScore),
     verdict,
-    imprint: visionData.detected_imprint,
+    imprint: visionData.detected_imprint ?? 'Not detected',
     sources: sources.slice(0, 4),
     coreResults: {
       imprint: {
-        match: validatorData.coreMatches.imprint.status !== 'conflict',
-        ...validatorData.coreMatches.imprint,
+        match: validatorData.coreMatches?.imprint?.status !== 'conflict',
+        ...(validatorData.coreMatches?.imprint ?? { status: 'omission', reason: 'Data not returned by AI.', evidence_quote: '' }),
       },
       color: {
-        match: validatorData.coreMatches.color.status !== 'conflict',
-        ...validatorData.coreMatches.color,
+        match: validatorData.coreMatches?.color?.status !== 'conflict',
+        ...(validatorData.coreMatches?.color ?? { status: 'omission', reason: 'Data not returned by AI.', evidence_quote: '' }),
       },
       shape: {
-        match: validatorData.coreMatches.shape.status !== 'conflict',
-        ...validatorData.coreMatches.shape,
+        match: validatorData.coreMatches?.shape?.status !== 'conflict',
+        ...(validatorData.coreMatches?.shape ?? { status: 'omission', reason: 'Data not returned by AI.', evidence_quote: '' }),
       },
       generic: {
-        match: validatorData.coreMatches.generic.status !== 'conflict',
-        ...validatorData.coreMatches.generic,
+        match: validatorData.coreMatches?.generic?.status !== 'conflict',
+        ...(validatorData.coreMatches?.generic ?? { status: 'omission', reason: 'Data not returned by AI.', evidence_quote: '' }),
       },
       source: {
         match: sourceScore >= 5,
