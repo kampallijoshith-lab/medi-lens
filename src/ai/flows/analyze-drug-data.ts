@@ -37,6 +37,7 @@ const prompt = ai.definePrompt({
   name: 'analyzeDrugImagePrompt',
   input: {schema: AnalyzeDrugDataInputSchema},
   output: {schema: AnalyzeDrugDataOutputSchema},
+  model: 'googleai/gemini-pro-vision',
   prompt: `You are an expert in pharmacology and medicine identification.
 From the provided image of the medicine packaging, identify the active ingredients.
 
